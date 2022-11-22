@@ -1,0 +1,55 @@
+{
+  "swagger" : "2.0",
+  "info" : {
+    "title" : "JSBankdawatehadiya",
+    "version" : "1.0.0",
+    "description" : "JSBankdawatehadiya"
+  },
+  "paths" : {
+    "/MarkPaid" : {
+      "post" : {
+        "operationId" : "postMarkPaid",
+        "responses" : {
+          "200" : {
+            "description" : "The operation was successful."
+          }
+        },
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "description" : "Insert a MarkPaid",
+        "parameters" : [ {
+          "name" : "body",
+          "in" : "body",
+          "schema" : {
+            "type" : "string"
+          },
+          "description" : "The request body for the operation",
+          "required" : true
+        } ]
+      }
+    },
+    "/Voureturn" : {
+      "post" : {
+        "operationId" : "postVoureturn",
+        "responses" : {
+          "200" : {
+            "description" : "The operation was successful."
+          }
+        },
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "description" : "Insert a Voureturn",
+        "parameters" : [ {
+          "name" : "body",
+          "in" : "body",
+          "schema" : {
+            "type" : "boolean"
+          },
+          "description" : "The request body for the operation",
+          "required" : true
+        } ]
+      }
+    }
+  },
+  "basePath" : "/jsbankdawatehadiya/v1"
+}

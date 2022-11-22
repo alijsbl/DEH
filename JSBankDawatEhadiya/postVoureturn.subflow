@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:ComIbmCompute.msgnode="ComIbmCompute.msgnode" xmlns:ComIbmFilter.msgnode="ComIbmFilter.msgnode" xmlns:ComIbmSOAPExtract.msgnode="ComIbmSOAPExtract.msgnode" xmlns:ComIbmSOAPRequest.msgnode="ComIbmSOAPRequest.msgnode" xmlns:comm_jsbl_logger_flow_JSBLogger.subflow="comm/jsbl/logger/flow/JSBLogger.subflow" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" xmlns:eflow="http://www.ibm.com/wbi/2005/eflow" xmlns:utility="http://www.ibm.com/wbi/2005/eflow_utility"
+    nsURI="postVoureturn.subflow" nsPrefix="postVoureturn.subflow">
+  <eClassifiers xmi:type="eflow:FCMComposite" name="FCMComposite_1">
+    <eSuperTypes href="http://www.ibm.com/wbi/2005/eflow#//FCMBlock"/>
+    <eStructuralFeatures xmi:type="ecore:EAttribute" xmi:id="Property.loggerName" name="loggerName" defaultValueLiteral="JSBankDawatEhadiya">
+      <eType xmi:type="ecore:EDataType" href="http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    </eStructuralFeatures>
+    <translation xmi:type="utility:TranslatableString" key="postVoureturn" bundleName="postVoureturn" pluginId="JSBankCollection"/>
+    <colorGraphic16 xmi:type="utility:GIFFileGraphic" resourceName="platform:/plugin/JSBankCollection/icons/full/obj16/postVoureturn.gif"/>
+    <colorGraphic32 xmi:type="utility:GIFFileGraphic" resourceName="platform:/plugin/JSBankCollection/icons/full/obj30/postVoureturn.gif"/>
+    <composition>
+      <nodes xmi:type="eflow:FCMSource" xmi:id="InTerminal.Input_1" location="57,181">
+        <translation xmi:type="utility:TranslatableString" key="Input" bundleName="postVoureturn" pluginId="JSBankCollection"/>
+      </nodes>
+      <nodes xmi:type="eflow:FCMSink" xmi:id="OutTerminal.Output_1" location="901,298">
+        <translation xmi:type="utility:TranslatableString" key="Output" bundleName="postVoureturn" pluginId="JSBankCollection"/>
+      </nodes>
+      <nodes xmi:type="comm_jsbl_logger_flow_JSBLogger.subflow:FCMComposite_1" xmi:id="FCMComposite_1_1" location="728,298">
+        <translation xmi:type="utility:ConstantString" string="Log Response"/>
+      </nodes>
+      <nodes xmi:type="ComIbmCompute.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_2" location="360,298" dataSource="JSBLDS" computeExpression="esql://routine/com.jsbank.collection#PrepareVoureturnFailureResponse.Main">
+        <translation xmi:type="utility:ConstantString" string="Prepare Failed Response"/>
+      </nodes>
+      <nodes xmi:type="ComIbmFilter.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_3" location="248,181" dataSource="JSBLDS" filterExpression="esql://routine/com.jsbank.collection#ValidateVoureturnRequest.Main">
+        <translation xmi:type="utility:ConstantString" string="Validate Request"/>
+      </nodes>
+      <nodes xmi:type="ComIbmSOAPRequest.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_4" location="488,92" wsdlFileName="RemoteFiles/Collection.wsdl" selectedPortType="CollectionSoap" selectedBinding="CollectionSoap12" selectedOperation="Voureturn" selectedPort="CollectionSoap12" targetNamespace="http://tempuri.org/" useHTTPTransport="true" webServiceURL="http://14.192.149.179:8030/Collection.asmx" httpProxyLocation="172.16.72.50:3128" sslProtocol="TLS" messageSetProperty="{DEHcollection_wsdl}">
+        <translation xmi:type="utility:ConstantString" string="SOAP Request"/>
+      </nodes>
+      <nodes xmi:type="ComIbmSOAPExtract.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_5" location="592,92">
+        <translation xmi:type="utility:ConstantString" string="SOAP Extract"/>
+      </nodes>
+      <nodes xmi:type="comm_jsbl_logger_flow_JSBLogger.subflow:FCMComposite_1" xmi:id="FCMComposite_1_6" location="147,181">
+        <translation xmi:type="utility:ConstantString" string="Log Request"/>
+      </nodes>
+      <nodes xmi:type="ComIbmCompute.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_7" location="661,96" dataSource="JSBLDS" computeExpression="esql://routine/com.jsbank.collection#PrepareVoureturnResponse.Main">
+        <translation xmi:type="utility:ConstantString" string="Prepare Response"/>
+      </nodes>
+      <nodes xmi:type="ComIbmCompute.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_8" location="390,91" dataSource="JSBLDS" computeExpression="esql://routine/com.jsbank.collection#PrepareVoureturnRequest.Main">
+        <translation xmi:type="utility:ConstantString" string="Prepare Request"/>
+      </nodes>
+      <nodes xmi:type="ComIbmCompute.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_9" location="550,33" computeExpression="esql://routine/com.jsbank.collection#HandleVoureturnFailure.Main">
+        <translation xmi:type="utility:ConstantString" string="Handle Failure"/>
+      </nodes>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_1" targetNode="FCMComposite_1_5" sourceNode="FCMComposite_1_4" sourceTerminalName="OutTerminal.out" targetTerminalName="InTerminal.in"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_2" targetNode="FCMComposite_1_1" sourceNode="FCMComposite_1_2" sourceTerminalName="OutTerminal.out" targetTerminalName="InTerminal.Input"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_3" targetNode="FCMComposite_1_8" sourceNode="FCMComposite_1_3" sourceTerminalName="OutTerminal.false" targetTerminalName="InTerminal.in"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_4" targetNode="FCMComposite_1_2" sourceNode="FCMComposite_1_3" sourceTerminalName="OutTerminal.true" targetTerminalName="InTerminal.in"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_5" targetNode="FCMComposite_1_3" sourceNode="FCMComposite_1_6" sourceTerminalName="OutTerminal.Output" targetTerminalName="InTerminal.in"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_6" targetNode="FCMComposite_1_4" sourceNode="FCMComposite_1_8" sourceTerminalName="OutTerminal.out" targetTerminalName="InTerminal.in"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_7" targetNode="FCMComposite_1_5" sourceNode="FCMComposite_1_4" sourceTerminalName="OutTerminal.fault" targetTerminalName="InTerminal.in"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_8" targetNode="FCMComposite_1_7" sourceNode="FCMComposite_1_5" sourceTerminalName="OutTerminal.out" targetTerminalName="InTerminal.in"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_11" targetNode="FCMComposite_1_1" sourceNode="FCMComposite_1_7" sourceTerminalName="OutTerminal.out" targetTerminalName="InTerminal.Input"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_13" targetNode="OutTerminal.Output_1" sourceNode="FCMComposite_1_1" sourceTerminalName="OutTerminal.Output" targetTerminalName="InTerminal.in"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_14" targetNode="FCMComposite_1_6" sourceNode="InTerminal.Input_1" sourceTerminalName="OutTerminal.out" targetTerminalName="InTerminal.Input"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_10" targetNode="FCMComposite_1_9" sourceNode="FCMComposite_1_8" sourceTerminalName="OutTerminal.failure" targetTerminalName="InTerminal.in"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_12" targetNode="FCMComposite_1_9" sourceNode="FCMComposite_1_4" sourceTerminalName="OutTerminal.failure" targetTerminalName="InTerminal.in"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_15" targetNode="FCMComposite_1_7" sourceNode="FCMComposite_1_9" sourceTerminalName="OutTerminal.out" targetTerminalName="InTerminal.in"/>
+    </composition>
+    <propertyOrganizer>
+      <propertyDescriptor groupName="Group.Basic" configurable="true" userDefined="true" describedAttribute="Property.loggerName">
+        <propertyName xmi:type="utility:TranslatableString" key="Property.loggerName" bundleName="postVoureturn" pluginId="JSBankCollection"/>
+      </propertyDescriptor>
+    </propertyOrganizer>
+    <stickyBoard/>
+  </eClassifiers>
+</ecore:EPackage>

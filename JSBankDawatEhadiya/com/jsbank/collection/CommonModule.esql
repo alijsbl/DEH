@@ -1,0 +1,158 @@
+BROKER SCHEMA com.jsbank.collection
+
+
+PATH com.systemsltd.logging.esqls, com.systemsltd.common.esqls, com.jsbl.common;
+
+CREATE COMPUTE MODULE PrepareExceptionResponse
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties = InputProperties;
+		
+		DECLARE exceptionRef REFERENCE TO InputExceptionList;
+		
+		CALL MoveToLastException(exceptionRef);  
+		CALL logExceptionMessage(exceptionRef); 
+		
+		CREATE FIELD OutputRoot.JSON.Data;
+		DECLARE outputRef REFERENCE TO OutputRoot.JSON.Data;
+		DECLARE envRef REFERENCE TO Environment.Variables.Transaction.Request;
+
+		SET outputRef.channel = envRef.channel;
+		SET outputRef.dateTime = envRef.dateTime;
+		SET outputRef.traceNo = envRef.traceNo;
+		SET outputRef.companyName = envRef.companyName;
+		SET outputRef.responseCode = '97';
+		CREATE FIELD outputRef.responseDetails IDENTITY (JSON.Array);
+		SET outputRef.responseDetails.Item = 'Unknown Error';
+		
+		CALL logInfoDecoratedMessage('Exception Response Prepared', OutputRoot);
+		
+		RETURN TRUE;
+	END;
+END MODULE;
+
+CREATE FUNCTION getValidationErrorMsg(missingElement CHARACTER) RETURNS CHARACTER
+BEGIN
+	RETURN REPLACE('? missing or invalid', '?', missingElement);
+END;
+
+CREATE FUNCTION hashRequest(request REFERENCE) RETURNS CHARACTER
+BEGIN
+	DECLARE requestRef REFERENCE TO request.[1];
+	DECLARE hash CHARACTER FIELDVALUE(requestRef);
+	 
+	MOVE requestRef NEXTSIBLING;
+	
+	WHILE LASTMOVE(requestRef) DO
+		SET hash = hash || FIELDVALUE(requestRef);
+		
+		MOVE requestRef NEXTSIBLING;
+	END WHILE;
+	
+	DECLARE result ROW;
+	SET hash = 'SELECT SHA('||''''||hash||''''||',256) as hashValue FROM DUAL';
+	SET result.row = PASSTHRU(hash);
+		
+	RETURN result.row.hashValue;
+END;
+
+CREATE FUNCTION authorizeRequest(accessToken CHARACTER, processingCode CHARACTER, merchantType CHARACTER,
+hostName CHARACTER) RETURNS BOOLEAN
+BEGIN
+	SET accessToken = accessToken || '|' || merchantType;
+	DECLARE allowedToken CHARACTER getConfiguration(processingCode || '|' || merchantType , 'ESB_ACL_REST');
+
+	IF allowedToken IS NULL OR accessToken is NULL THEN
+		CALL logInfoMessage('ProcessingCode and MerchantType combination not allowed');
+		RETURN FALSE;	
+	ELSEIF allowedToken <> accessToken THEN
+		CALL logInfoMessage('Merchant Type not authorized');
+		RETURN FALSE;	
+	ELSEIF allowedToken = accessToken THEN
+		IF NOT (addressVerification(processingCode, merchantType, SUBSTRING(accessToken BEFORE '|'), hostName)) THEN
+			CALL logInfoMessage(hostName || ' Address not allowed');
+			RETURN FALSE;
+		END IF;
+	END IF;
+
+	RETURN TRUE;
+END;
+
+CREATE PROCEDURE getLastException(INOUT exceptionList REFERENCE)
+BEGIN
+	MOVE exceptionList FIRSTCHILD;
+	
+	X : WHILE LASTMOVE(exceptionList) DO
+		IF (exceptionList.[<].Number IS NOT NULL) THEN
+			MOVE exceptionList LASTCHILD;
+		ELSE
+			LEAVE X;
+		END IF;
+	END WHILE;
+END;
+
+
+CREATE PROCEDURE Split (IN S CHARACTER, IN Env REFERENCE, IN Delim CHARACTER) 
+BEGIN 
+   DECLARE P INTEGER; 
+   DECLARE Idx INTEGER 1; 
+
+   SET Env.Split = NULL; 
+
+   REPEAT 
+      SET P = POSITION(Delim IN S); 
+      IF P = 0 THEN 
+         SET Env.Split.Array[Idx] = S; 
+      ELSE 
+         SET Env.Split.Array[Idx] = LEFT(S, P - 1); 
+         SET S = SUBSTRING(S FROM P + LENGTH(Delim)); 
+         SET Idx = Idx + 1; 
+      END IF; 
+  UNTIL P = 0    
+  END REPEAT;    
+END;
+
+CREATE FUNCTION decrypt(value CHARACTER) RETURNS CHARACTER
+BEGIN
+	DECLARE key CHARACTER;
+	SET key = THE(SELECT ITEM key.A FROM Database.{'WISE'} AS key);
+
+	DECLARE query CHARACTER;
+	DECLARE result ROW;
+	SET query = 'SELECT CRYPTO.RSA_DECRYPT('''|| value ||''','''|| key ||''') AS decryptedPin FROM DUAL;';
+	SET result.row[] = PASSTHRU(query);
+
+	RETURN COALESCE(result.row.DECRYPTEDPIN, NULL);
+END;
+
+
+CREATE PROCEDURE arrayInput (IN inRef REFERENCE, IN outRef REFERENCE) BEGIN
+	
+	IF (inRef IS NOT NULL) THEN
+			SET outRef.field = inRef;
+		ElSE
+			DECLARE field REFERENCE TO inRef.*[>];	
+			DECLARE i INTEGER 1;
+	        WHILE LASTMOVE(field) DO
+	        	SET outRef.field[i] = FIELDVALUE(field);
+	        	SET i = i + 1;
+	        	MOVE field NEXTSIBLING;
+		    END WHILE;
+		END IF;
+END;
+
+
+CREATE PROCEDURE myMethod (IN inRef REFERENCE, IN outRef REFERENCE) BEGIN
+	
+	IF (inRef IS NOT NULL) THEN
+			SET outRef.field = inRef;
+		ElSE
+			DECLARE field REFERENCE TO inRef.*[>];	
+			DECLARE i INTEGER 1;
+	        WHILE LASTMOVE(field) DO
+	        	SET outRef.field[i] = FIELDVALUE(field);
+	        	SET i = i + 1;
+	        	MOVE field NEXTSIBLING;
+		    END WHILE;
+		END IF;
+END;

@@ -1,0 +1,171 @@
+BROKER SCHEMA com.jsbank.collection
+
+PATH com.jsbl.common, com.systemsltd.logging.esqls, com.systemsltd.common.esqls;
+
+CREATE FILTER MODULE ValidateVoureturnRequest
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		CALL logInfoDecoratedMessage('Voureturn Request Received', Root);
+		
+		SET Environment.Variables.Transaction.Request = Root.JSON.Data;
+		SET Environment.Variables.protocol = Root.Properties.ReplyProtocol;
+		SET Environment.Variables.host = Root.HTTPInputHeader.{'X-Remote-Host'};
+		
+		DECLARE inputRef REFERENCE TO Root.JSON.Data;
+		CREATE FIELD Environment.Variables.Transaction;
+		DECLARE transRef REFERENCE TO Environment.Variables.Transaction;
+
+		CREATE FIELD transRef.Error IDENTITY (JSON.Array);
+		
+		IF NOT fieldAndValueExists(inputRef.processingCode, 'processingCode') THEN
+			CREATE LASTCHILD OF transRef.Error TYPE NameValue NAME 'Item' VALUE getValidationErrorMsg('processingCode');
+		END IF;
+		
+		IF NOT fieldAndValueExists(inputRef.merchantType, 'merchantType') OR LENGTH(inputRef.merchantType) <> 4 THEN
+			CREATE LASTCHILD OF transRef.Error TYPE NameValue NAME 'Item' VALUE getValidationErrorMsg('merchantType');
+		END IF;
+		
+		IF EXISTS(Environment.Variables.Transaction.Error.Item[]) THEN
+			RETURN TRUE;
+		END IF;
+		
+		IF NOT(authorizeRequest(Root.HTTPInputHeader.Access_token, inputRef.processingCode, inputRef.merchantType, 
+			Root.HTTPInputHeader.{'X-Remote-Host'})) THEN
+			SET Environment.Variables.authorization = 'Failed';
+			
+			RETURN TRUE;
+		END IF;
+		
+		CALL logInfoMessage('Voureturn Authenticated');
+		
+		IF NOT fieldAndValueExists(inputRef.dateTime, 'dateTime') OR LENGTH(inputRef.dateTime) <> 14 THEN
+			CREATE LASTCHILD OF transRef.Error TYPE NameValue NAME 'Item' VALUE getValidationErrorMsg('dateTime');
+		END IF;
+		
+		IF NOT fieldAndValueExists(inputRef.traceNo, 'traceNo') OR LENGTH(inputRef.traceNo) <> 6
+			OR validateInteger(inputRef.traceNo) = FALSE THEN
+			CREATE LASTCHILD OF transRef.Error TYPE NameValue NAME 'Item' VALUE getValidationErrorMsg('traceNo');
+		END IF;
+			
+		IF NOT fieldAndValueExists(inputRef.Utybillno, 'Utybillno') THEN
+			CREATE LASTCHILD OF transRef.Error TYPE NameValue NAME 'Item' VALUE getValidationErrorMsg('Utybillno');
+		END IF;
+
+		RETURN EXISTS(Environment.Variables.Transaction.Error.Item[]);
+		
+		RETURN TRUE;
+	END;
+END MODULE;
+
+
+CREATE COMPUTE MODULE PrepareVoureturnFailureResponse
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties = InputProperties;
+		
+		CREATE FIELD OutputRoot.JSON.Data;
+		DECLARE outputRef REFERENCE TO OutputRoot.JSON.Data;
+		DECLARE inputRef REFERENCE TO InputRoot.JSON.Data;
+		
+		SET outputRef.processingCode = inputRef.processingCode;
+		SET outputRef.merchantType = inputRef.merchantType;
+		SET outputRef.traceNo = inputRef.traceNo;
+		SET outputRef.dateTime = inputRef.dateTime;
+		
+		IF Environment.Variables.authorization = 'Failed' THEN
+			SET outputRef.responseCode = '96';
+			CREATE FIELD outputRef.responseDetails IDENTITY (JSON.Array);
+			SET outputRef.responseDetails.Item = 'Authentication Failed';
+		ELSE
+			SET outputRef.responseCode = '98';
+			CREATE FIELD outputRef.responseDetails IDENTITY (JSON.Array);
+			SET outputRef.responseDetails = Environment.Variables.Transaction.Error;
+		END IF;	
+		
+		CALL logInfoDecoratedMessage('Voureturn Response Prepared', OutputRoot);
+		
+		RETURN TRUE;
+
+	END;
+END MODULE;
+
+	
+CREATE COMPUTE MODULE PrepareVoureturnRequest
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.HTTPRequestHeader.SOAPAction = '';
+		SET OutputRoot.Properties = InputProperties;
+		
+		CREATE FIELD OutputRoot.XMLNSC.ns:Voureturn;
+		DECLARE outputRef REFERENCE TO OutputRoot.XMLNSC.ns:Voureturn;
+		DECLARE inputRef REFERENCE TO InputRoot.JSON.Data;
+		
+		SET outputRef.ns:Vounorequest = '[{Utybillno:'||inputRef.Utybillno||'}]';
+		
+		CALL logInfoDecoratedMessage('Voureturn Request Prepared', OutputRoot);
+		
+		RETURN TRUE;
+	END;
+END MODULE;	
+
+
+
+CREATE COMPUTE MODULE PrepareVoureturnResponse
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties = InputProperties;
+		CALL logInfoDecoratedMessage('Voureturn Response Received', InputRoot);
+		
+		CREATE FIELD OutputRoot.JSON.Data;
+		DECLARE outputRef REFERENCE TO OutputRoot.JSON.Data;
+		DECLARE envRef REFERENCE TO Environment.Variables.Transaction.Request;
+		DECLARE inputRef REFERENCE TO InputRoot.XMLNSC.ns:VoureturnResponse;
+		SET OutputRoot.Properties.ContentType = 'application/json';
+		
+		SET outputRef.processingCode = envRef.processingCode;
+		SET outputRef.merchantType = envRef.merchantType;
+		SET outputRef.traceNo = envRef.traceNo;
+		SET outputRef.dateTime = envRef.dateTime;
+		
+		IF inputRef.ns:VoureturnResult.ns:ResponseCode = '001' THEN
+			SET outputRef.ResponseCode = '200';
+			
+			DECLARE Response ROW;
+			DECLARE Billfetch CHARACTER;
+			SET Billfetch = inputRef.ns:VoureturnResult.ns:Billfetch;
+			DECLARE dataAsBit BIT  CAST(Billfetch AS BIT CCSID 1208);
+			CREATE LASTCHILD OF Response DOMAIN 'JSON' PARSE(dataAsBit CCSID 1208);
+			
+			SET outputRef.Response = Response.JSON.Data.Item;
+			
+		ELSE
+			SET outputRef.ResponseCode = '98';
+		END IF;
+
+		SET outputRef.Billid = inputRef.ns:VoureturnResult.ns:Billid;
+		SET outputRef.BankTranid = inputRef.ns:VoureturnResult.ns:BankTranid;
+		SET outputRef.Error = inputRef.ns:VoureturnResult.ns:Error;
+		SET outputRef.ErrorMsg = envRef.Response;
+		
+		
+		
+		CALL logInfoDecoratedMessage('Voureturn Response Prepared', OutputRoot);
+		
+		RETURN TRUE;
+	END;
+END MODULE;
+
+
+CREATE COMPUTE MODULE HandleVoureturnFailure
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		
+		SET OutputRoot.Properties = InputProperties;
+		DECLARE envRef REFERENCE TO Environment.Variables.Transaction.Request;
+		
+		SET envRef.Response = 'Invalid Request Format OR Error from Server';
+		
+		
+		RETURN TRUE;
+	END;
+END MODULE;
